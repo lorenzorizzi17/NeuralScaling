@@ -9,6 +9,7 @@
 \usepackage{amsthm}           
 \usepackage{mathtools} 
 \usepackage{pgfplots}
+\usepackage{xcolor}
 \pgfplotsset{compat=1.17}
 
 \usepackage{graphicx}          % Per includere immagini
@@ -33,7 +34,7 @@ Let us consider a kernel $K(\vec x, \vec y)$ where $\vec x \in \mathbb{R}^d$. We
 $$
 K(\vec x, \vec y) = h(\langle \vec x, \vec y \rangle)
 $$
-where $h \in \mathcal{C}^{\infty}$. This way, we should be able to express $h$ as a power series $h(t) = \sum_m^\infty h_m t^m$.
+where $h \in \mathcal{C}^{\infty}$. This way, we should be able to express $h$ as a power series $h(t) = \sum_m^\infty h_m t^m$. \footnote{To be done in the final document: explain why}
 
 When studying the generalization error of a kernel machine, we are interested in identifying the spectrum of the operator $T$:
 $$
@@ -41,17 +42,17 @@ T f(x) = \int d^d \vec y \>  p(\vec y) K(\vec x, \vec y) f(\vec y)
 $$
 where $p(\vec x)$ is the probability distribution of the data. In this first report, we are going to consider a gaussian isotropic case where $p  = \mathcal{N}(0, \mathbb{I}_d)$
 
-The operator $T$ is linear, symmetric and compact (!), $T : L_2(p) \to L_2(p)$ and can be diagonalized:
+The operator $T$ is linear, symmetric and positive definite (!), $T : L_2(p) \to L_2(p)$ and can be diagonalized with positive eigenvalues:
 $$
 \int d^d \vec y \>  p(\vec y) K(\vec x, \vec y) f_\beta(\vec y) = \lambda_\beta f_\beta(\vec x)
 $$
-By Mercer's theorem, this is equivalent to:
+By Mercer's theorem, this is equivalent to claim that the kernel can be decomposed through:
 $$
 K(\vec x, \vec y) = \sum_i \lambda_i \varphi_i(\vec x) \varphi_i(\vec y)
 $$
-where $\varphi_\beta$ are an orthonormal basis of the $L_2(p)$ space. In this specific case, they can be represented through Hermite polynomials.
+where $\varphi_\beta$ are an orthonormal basis of the $L_2(p)$ space. In this specific case, they can be represented through Hermite polynomials (they are orthonormal with respect to the gaussian measure)
 
-In general, one can show (?) the eigenvalues can be indexed through a multi-index $\beta = (\beta_1, \beta_2, \dots, \beta_d)$ yielding:
+In general, one can show the eigenvalues can be indexed through a multi-index $\beta = (\beta_1, \beta_2, \dots, \beta_d)$ (TO DO) yielding:
 $$
 K(\vec x, \vec y) = \sum_\beta \lambda_\beta He_\beta(\vec x) He_\beta(\vec y)
 $$
@@ -59,11 +60,13 @@ where
 $$
 He_\beta(\vec x) = \prod_i He_{\beta_i}(x_i)
 $$
+and $He_{\beta_i}(x_i)$ is just the hermite polynomial of order $\beta_i$ in the variable $x_i$. 
+
 Using an argument of symmetry (the gaussian isotropic measure is invariant under rotation and the same goes for dot-product kernel), we should get a Mercer decomposition of the kind:
 $$
 K(\vec x, \vec y) = h(\langle \vec x, \vec y \rangle) = \sum_m^\infty \xi_m \sum_{|	\beta| = m} He_\beta(\vec x) He_\beta(\vec y)
 $$
-The full derivation for the derivation of $\xi_m$ can be found in [Paper 2]:
+The full derivation for the derivation of $\xi_m$ can be found in [Paper 2, Appendix A.1]:
 $$
 \xi_m = h_m m! d^{-m}
 $$
@@ -71,7 +74,7 @@ the degeneracies of a level $m$ is given by the possible ways of arranging $(\be
 $$
 g_m = {d+m-1 \choose m}
 $$
-when $d \gg 1$, $g_m  = \frac{1}{m!} d^m$
+when $d \gg 1$, $g_m  = \frac{1}{m!} d^m$ (Fig. \ref{fig:eigenvaluesisotropic}). Note that this is just the number of possible ways to build a vector $\beta= (\beta_1, \dots, \beta_d)$ such that $|\beta| = m$. 
 \begin{figure}
 	\centering
 \begin{tikzpicture}[
@@ -83,8 +86,8 @@ when $d \gg 1$, $g_m  = \frac{1}{m!} d^m$
 	
 	% --- ASSI ---
 	% Disegniamo un asse Y logaritmico schematico
-	\draw[->, thick] (0,0) -- (0, 7) node[above] {$\xi_m$ (Log Scale)};
-	\draw[->, thick] (0,0) -- (16,0) node[below] {$m$};
+	\draw[->, thick] (0,0) -- (0, 7) node[above] {$\lambda_i$ (Log Scale)};
+	\draw[->, thick] (0,0) -- (16,0) node[below] {$Index \> i$};
 	
 	% --- LIVELLI SPETTRALI ---
 	
@@ -119,18 +122,56 @@ when $d \gg 1$, $g_m  = \frac{1}{m!} d^m$
 	
 
 \end{tikzpicture}
+\label{fig:eigenvaluesisotropic}
+\caption{\textit{Kernel spectrum under isotropic gaussian distribution}}
 \end{figure}
 
 
-NUMERICAL PLOTS CON EMPIRICAL DIAGONALIZATION
+\paragraph{Numerical plots}
+To estimate numerically the spectrum of a general kernel operator:
+$$
+Tf = \int dx' p(x') K(x,x') f(x') = \mathbb{E}[K(x,x')f(x')]_{x' \sim p }
+$$
+we can proceed as follows. Imagine we sample from $p(x)$ and obtain a set of IID values $\{x_1, x_2, x_3, \dots, x_M\}$. We can then approximate the distribution $p(x)$ as:
+$$
+p(x) \approx  \frac{1}{M}  \sum_i^M  \delta(x'-x_i) 
+$$
+Hence:
+$$
+(Tf) (x) \approx \frac{1}{M}  \sum_i^M \int dx' \delta(x'-x_i) K(x,x') f(x') =  \sum_i^M\frac{1}{M} K(x,x_i)f(x_i)
+$$
+The eigenfunctions $g_k(x)$ with eigenvalue $\lambda_k$ is such that, $\forall x_j$:
+$$
+(Tg_k)(x_j) = \lambda_k g_k(x_j)
+$$
+Combining:
+$$
+(Tg_k)(x)  = \lambda_k g_k(x) \approx \sum_{i=0}^M\frac{1}{M} K(x,x_i)g_k(x_i)
+$$
+If I let $\vec v = (g_k(x_1), g_k(x_2), \dots)$, then:
+$$
+\lambda_k v_j = \frac{1}{M} \sum_i K(x_k, x_i) v_i
+$$
+in vectorial form:
+$$
+\lambda_k \vec v = \frac{1}{M} K \vec v
+$$
+hence I can estimate the eigenvalues $\lambda_k$ of the operator once I have built the empirical matrix $\frac{1}{M} K(x_i, x_j)$, provided $x_i \sim p(x)$. This is a Montecarlo method essentially (and reproduces the correct spectrum when $M \to \infty$, Fig. \ref{fig:spectrum}). 
+\begin{figure}
+	\centering
+	\includegraphics[scale = 0.6]{../fig/spectrum_plot.pdf}
+	\caption{\textit{The red plateau corresponds to the theoretical behavior of the spectrum (here $d = 10$). As $M$ grows, the curve gets closer and closer to the expected behavior}}
+	\label{fig:spectrum}
+\end{figure}
 
-\section{Kernel error, $\lambda = 0$}
-From Paper1, we know that the kernel generalization error is given once we compute the quantity $\nu$ defined through the self-consistency equation:
+Still, I'm not really convinced this is the best algorithm to perform such a numerical task. As typical in a Monte Carlo approach, the convergence to the target distribution is dictated by $\sqrt{M}$, which is quite slow. A matrix $M \times M$ where $M = 10^5$ has $10^{10}$ elements, occupying $40$ GB in the RAM, so this procedure becomes unfeasible quite soon. I should check and see if there are better algorithms.
+\section{Kernel error, ridgeless regime $\lambda = 0$}
+Let's compute the generalization error for a kernel ridge regression problem in the ridgless regime. From Paper1, we know that the kernel error is given once we compute the quantity $\nu$ defined through the self-consistency equation:
 \begin{equation}
-	n - \frac{\lambda}{\nu} = Tr(\Sigma (\Sigma + \mathbb{I}\nu)^{-1}) = df(\nu)
+	n - \frac{\lambda}{\nu} = Tr(\Sigma (\Sigma + \mathbb{I}\nu)^{-1}) \equiv df(\nu)
 	\label{eq:paper1Kernel}
 \end{equation}
-where $\Sigma$ is the diagonal matrix of the eigenvalues of $k(\vec x, \vec y)$. In this work, we will use the following scaling:
+where $\Sigma$ is the diagonal matrix of the eigenvalues of $k(\vec x, \vec y)$\footnote{Strictly speaking, the eigenvalues are those associated with the kernel integral operator $T$}, $\Sigma = Diag(\lambda_1, \dots, \lambda_\infty)$. In this work, we will use the following scaling:
 $$
 n = \alpha d^\kappa
 $$
@@ -141,22 +182,26 @@ Take Eq.\ref{eq:paper1Kernel} and substitute $\lambda = 0$ and $n = \alpha d^\ka
 \begin{equation}
 	\alpha = d^{-\kappa} df(\nu) = d^{-\kappa} \sum_i^\infty \frac{\lambda_i}{\lambda_i + \nu}
 \end{equation}
-We know that in the isotropic case the eigenvalues are distributed in degenerate shells, hence:
+We know that in the isotropic case the eigenvalues are distributed in degenerate shells (call the degeneration $g_m$ for level $m$), hence:
 \begin{equation}
 	\alpha = d^{-\kappa} \sum_m^\infty g_m \frac{\xi_m}{\xi_m + \nu} = d^{-\kappa} \sum_m^\infty \frac{d^m}{m!} \frac{h_m m! d^{-m}}{h_m m! d^{-m} + \nu}
 \end{equation}
-Let's define $h_m m! = \delta_m$. In all usual cases, $\delta_m \sim O(1)$ w.r.t $m$ (for polynomials, it eventually becomes zero. For regular functions like the exponential, $d_m = 1, \forall m$). The trick here is to work under the thermodynamic limit dividing the sum in three terms:
+Let's define $h_m m! = \delta_m$. In all usual cases, $\delta_m \sim O(1)$ with respect to $m$ (for polynomials, it eventually becomes zero. For regular functions like the exponential, $\delta_m = 1, \forall m$). The trick here is to work under the thermodynamic limit dividing the sum in three terms:
 \begin{equation}
 	\begin{aligned}
-			\alpha &= d^{-\kappa} \sum_m^\infty \frac{d^m}{m!} \frac{\delta_m d^{-m}}{\delta_m d^{-m} + \nu} = \\
-			&= d^{-\kappa}\left( \sum_{m = 0}^{k-1} \frac{d^m}{m!} \frac{\delta_m d^{-m}}{\delta_m d^{-m} + \nu} + \frac{d^\kappa}{\kappa!} \frac{\delta_\kappa d^{-\kappa}}{\delta_\kappa d^{-\kappa} + \nu} + \sum_{m = k+1}^{\infty} \frac{d^m}{m!} \frac{\delta_m d^{-m}}{\delta_m d^{-m} + \nu}\right)
+		\alpha &= d^{-\kappa} \sum_m^\infty \frac{d^m}{m!} \frac{\delta_m d^{-m}}{\delta_m d^{-m} + \nu} = \\
+		&= d^{-\kappa}\bigg( 
+		\underbrace{\sum_{m = 0}^{\kappa-1} \frac{d^m}{m!} \frac{\delta_m d^{-m}}{\delta_m d^{-m} + \nu}}_{m < \kappa } + 
+		\underbrace{\frac{d^\kappa}{\kappa!} \frac{\delta_\kappa d^{-\kappa}}{\delta_\kappa d^{-\kappa} + \nu}}_{m = \kappa} + 
+		\underbrace{\sum_{m = \kappa+1}^{\infty} \frac{d^m}{m!} \frac{\delta_m d^{-m}}{\delta_m d^{-m} + \nu}}_{m > \kappa}
+		\bigg)
 	\end{aligned}
 \end{equation}
 To make things work, we have to make an ansatz. We will guess:
 $$
 \nu = \xi d^{-\kappa}
 $$
-PLOT NUMERICI PER CONFERMARE ANSATZ
+and verify a posteriori this claim.
 Let's consider the three terms separately:
 \begin{itemize}
 	\item \textbf{First term}:
@@ -167,11 +212,11 @@ Let's consider the three terms separately:
 	\begin{equation}
 		 \frac{\delta_m d^{-m}}{\delta_m d^{-m} + \xi d^{-\kappa}} = \frac{1}{1+ \frac{\xi}{\delta_m}d^{m-k}} \xrightarrow{d \gg 1, m < k} 1
 	\end{equation}
-	Since $\xi$ is independent of $d$ by construction and $\delta_m$ is of order 1 with respect to $m$. 
+	Since $\xi$ is independent of $d$ by ansatz construction and $\delta_m$ is of order 1 with respect to $m$. 
 	
 	The first term then becomes:
-		\begin{equation}
-		\sum_{m = 0}^{\kappa-1} \frac{d^m}{m!} = \sum_{m = 0}^{\kappa-1} \frac{d^{m-\kappa}}{m!} \xrightarrow{d \gg 1} 0
+	\begin{equation}
+		d^{-\kappa}\sum_{m = 0}^{\kappa-1} \frac{d^m}{m!} = \sum_{m = 0}^{\kappa-1} \frac{d^{m-\kappa}}{m!} \xrightarrow{d \gg 1} 0
 	\end{equation}
 	
 	\item \textbf{Central term}: This is easy, as it evaluates to something of order 1:
@@ -209,20 +254,26 @@ which is independent of $d$, confirming our scaling ansatz. Finally, one has:
 	\nu = \xi(\alpha, \kappa) d^{-\kappa}
 	\label{eq:nu}
 \end{equation}
+Eq. \ref{eq:nu} clearly shows that $\xi$ does not depend on $d$, hence our ansatz is justified. Fig. \ref{fig:nuscaling} is solid proof that our Eq.\ref{eq:nu} is the correct one
 
-NUMERICAL FIGURE DISPLAYING THE PERFECT AGREEMENT WITH A NUMERICAL SOLVER
-\subsection{Extreme cases}
+\begin{figure}
+	\centering
+	\includegraphics[scale = 0.6]{../fig/nu_scaling.pdf}
+	\caption{\textit{Behavior of $\nu$ against dimension $d$. The blue dots are obtained through numerical solutions of Eq.\ref{eq:paper1Kernel} using the fixed point method to solve the self-consistency equation. The green continuous line represents the curve of Eq.\ref{eq:nu}. The two coincides quite well already when $d \sim 1000$. \textcolor{red}{N.B. Quando d cresce, $\nu$ va a zero. Forse è meglio se uso $\log\nu$ per evitare valori piccoli}}}
+	\label{fig:nuscaling}
+\end{figure}
+\subsection{Some examples of kernels}
 When using an exponential kernel, one has $\delta_\kappa = 1, \forall \kappa$ (note that $\delta_\kappa$ is just the derivative of the $h$ function evaluated at $0$.)
 
 What happens when we use a polynomial kernel of degree $\kappa_0$? This essentialy means $\delta_m = 0 \> \> \forall m \geq \kappa_0$. There can be two cases:
 \begin{itemize}
 	\item When $\kappa < \kappa_0$, then $\delta_\kappa \neq 0$ and $l(\kappa) \neq 0$, hence we can safely use Eq.\ref{eq:nu}
-	\item When $\kappa > \kappa_0$, then $\delta_\kappa = 0$ and $l(\kappa) = 0$. This implies $\nu = 0$. [?? BIAS NULLO MA VARIANZA MAL DEFINITA]
+	\item When $\kappa > \kappa_0$, then $\delta_\kappa = 0$ and $l(\kappa) = 0$. This implies $\nu = 0$. This is however problematic \textcolor{red}{Ancora WIP. In teoria $\nu = 0$ non è accettabile perché rende la varianza negativa. A quello che ho capito qui è sbagliata l'ansatz, to be studied}
 \end{itemize}
 \subsection{Computation for $Var(\alpha, \kappa)$}
 Again, from Paper 1 (but also Cheng, Montanari) we have:
 \begin{equation}
-	V(\alpha, \beta, \lambda = 0) = V = \sigma_\epsilon^2 \frac{Tr(\Sigma^2(\Sigma+\nu)^{-2})}{n-Tr(\Sigma^2(\Sigma+\nu)^{-2})} = \frac{\frac{1}{n}Tr(\Sigma^2(\Sigma+\nu)^{-2})}{1-\frac{1}{n}Tr(\Sigma^2(\Sigma+\nu)^{-2})} = \frac{\tau}{1-\tau}
+	Var(\alpha, \beta, \lambda = 0) = V = \sigma_\epsilon^2 \frac{Tr(\Sigma^2(\Sigma+\nu)^{-2})}{n-Tr(\Sigma^2(\Sigma+\nu)^{-2})} = \frac{\frac{1}{n}Tr(\Sigma^2(\Sigma+\nu)^{-2})}{1-\frac{1}{n}Tr(\Sigma^2(\Sigma+\nu)^{-2})} = \frac{\tau}{1-\tau}
 \end{equation}
 Let's compute $\tau$, the procedure is similar to the one we have seen above.
 \begin{equation}
@@ -263,19 +314,28 @@ So for the variance, the only term that counts is the one of order $m = \kappa$.
 where $\xi(\alpha, \kappa)$ can be computed as in Eq.\ref{eq:nu}. The full variance will then become:
 \begin{equation}
 	Var(\alpha, \kappa, \lambda = 0) = \sigma_\epsilon^2\frac{1-\tau}{\tau} = \sigma_\epsilon^2 \frac{\delta_\kappa^2}{\alpha \kappa! (\delta_\kappa + \xi)^2 - \delta_\kappa^2}
+	\label{eq:variance}
 \end{equation}
-[TO DO: CONDITION SUCH THAT DENOMINATOR IS POSITIVE?]
+\textcolor{red}{Under which condition is the denominator negative? Not trivial}
 \\
 
-[NUMERICAL PLOT OF VARIANCE SHAPE, TENDS TO ZERO AS ALPHA GROWS]
+We can now plot the behavior of the variance as $\alpha$ is varied (Fig. \ref{fig:variance})
+
+\textcolor{red}{Discorso del multiple descent: il plot in Fig.4 è valido solo per un regime, unendo tutti i regimi uno ottiene una "multiple descent" tipica dei kernel}
+\begin{figure}
+	\centering
+	\includegraphics[scale = 0.6]{../fig/variance.pdf}
+	\caption{\textit{Variance curve obtained with Eq.\ref{eq:variance} when using a kernel polynomial of degree $\kappa_0 = 9$ and a quadratic scaling regime $n = \alpha d^2$ for $d$ large. The behavior of the curve is reminiscent of the double descent phenomenon well documented in the machine learning literature. Note that the variance converges to $0$ when $\alpha$ is large (as it should be). }}
+	\label{fig:variance}
+\end{figure}
 
 \subsection{Computation for $B(\alpha, \kappa)$}
-The bias term is given by:
+The bias term is given by (again, Paper 1):
 \begin{equation}
 	B(\alpha, \kappa) = \frac{\nu^2 \langle \vec\theta, (\Sigma + \nu)^{-2} \vec\theta\rangle}{1-\tau}
 	\label{eq:bias1}
 \end{equation}
-where $\vec\theta$ is the orthonormal decomposition of the target function $f_\star(\vec x)\in L_2(\mathcal{N}(0,\mathcal{I_d}))$. In particular, given the generalized $d$-dimensional Hermite polynomials, we can write:
+where $\vec\theta$ is the orthonormal decomposition of the target function $f_\star(\vec x)\in L_2(\mathcal{N}(0,\mathcal{I}_d))$. In particular, given the generalized $d$-dimensional Hermite polynomials, we can write:
 \begin{equation}
 	f_\star (\vec x) = \sum_{\beta \in \mathbb{N}^d} \theta_\beta He_\beta(\vec x) = \sum_{\beta \in \mathbb{N}^d} \theta_\beta  \prod_{i = 1}^{d}He_{\beta_i}(x_i) 
 \end{equation}
@@ -285,7 +345,7 @@ $$
 $$
 but $f_\star$ may easily be not rotationally invariant (as was the case for the kernel $k(x,x')$).
 
-Now let's compute the numeratore of Eq.\ref{eq:bias1}: 
+Now let's compute the numerator of Eq.\ref{eq:bias1}: 
 \begin{equation}
 	\begin{aligned}
 		\nu^2 \langle \vec\theta, (\Sigma + \nu)^{-2} \vec\theta\rangle =  \sum_{\beta \in \mathbb{N}^d} \theta_\beta^2 \frac{\nu^2}{(\lambda_\beta + \nu)^2} = \sum_{m = 0}^\infty \frac{\nu^2}{(\xi_m+\nu)^2} \sum_{|\beta| = m} \theta_\beta^2
@@ -295,7 +355,7 @@ Let's define:
 $$
 \Theta(m) = \sum_{|\beta| = m} \theta_\beta^2
 $$
-So that finally:
+This is the "energy" of the target functions that lies in the $m$ shell. Finally:
 \begin{equation*}
 	\begin{aligned}
 			\nu^2 \langle \vec\theta, (\Sigma + \nu)^{-2} \vec\theta\rangle &= \sum_{m = 0}^\infty \Theta(m) \frac{\xi^2 d^{-2k}}{(\delta_m d^{-m} + \xi d^{-k})^2} = \sum_{m = 0}^\infty \Theta(m) \frac{\xi^2 d^{-2k}}{\delta_m^2 d^{-2m} + \xi^2 d^{-2\kappa} + 2\delta_m \xi d^{-m-\kappa}} = \\
@@ -324,7 +384,7 @@ This is a nice formula! Combining all together, I get:
 \begin{equation}
 	B(\alpha, \kappa, \vec \theta) = \frac{\frac{\xi^2}{(\xi + \delta_\kappa)^2}\Theta(\kappa) + \sum_{m > k}\Theta(m)}{1-\tau} = \frac{\frac{\xi^2}{(\xi + \delta_\kappa)^2}\Theta(\kappa) + \sum_{m > k}\Theta(m)}{1-\frac{1}{\alpha \kappa !} \frac{\delta_\kappa^2}{(\delta_\kappa + \xi)^2}} 
 \end{equation}
-When $\alpha \to \infty$ (a lot of data, but still scaling with $d^\kappa$), then:
+When $\alpha \to \infty$ (a lot of data, but still scaling with $d^\kappa$, we are "saturating" the $\kappa$ level but not the $\kappa+1$), then:
 $$
 Var(\alpha, \kappa) \to 0
 $$
@@ -334,5 +394,21 @@ $$
 The last quantity is extremely interesting. It represents the projection of the target function $f_\star$ on the space spanned by Hermite polynomials whose degree is higher than the sample complexity $\kappa$. This is the irreducible bias, the error we cannot avoid since we do not have enough data.
 
 
-ASYMPTOTIC BEHAVIOR OF $\xi, \tau$ as $\alpha \to \infty$. (both goes to $0$). 
+\subsection{Finite size scaling}
+TODO!
+\begin{itemize}
+	\item First plot of variance empirical and curve for a real KRR problem. Detect the seemingly mismatch
+	\item Introduction to the finite size world. Argue why it's should decay as $1/d$
+	\item Plot of distance normalized to show the scaling
+	\item Set a kernel whose neighboring coefficients are zero and observe a different scaling
+\end{itemize}
+\subsection{Ridge case}
+	\begin{itemize}
+		\item Add the ridge parameter $\lambda$ and verify this is equivalent to $l(\kappa)$
+		\item Reinterpret everything in terms of $\lambda_{eff}$, higher terms act as a regularizer
+	\end{itemize}
+\textcolor{red}{TODO: \\ Asymptotic behavior of $\xi, \tau$ as $\alpha \to \infty$. (both goes to $0$). \\ Give a random initialization to the weight $\theta_\beta$ and see what we get as a back-of-the-envelope computations. \\ Fix the ansatz when $\kappa_0 < \kappa$ \\ And then of course onto the power-law case}
+
+
+
 \end{document}
