@@ -10,6 +10,7 @@
 \usepackage{mathtools} 
 \usepackage{pgfplots}
 \usepackage{xcolor}
+\usetikzlibrary{positioning, arrows.meta}
 \pgfplotsset{compat=1.17}
 
 \usepackage{graphicx}          % Per includere immagini
@@ -165,6 +166,10 @@ hence I can estimate the eigenvalues $\lambda_k$ of the operator once I have bui
 \end{figure}
 
 Still, I'm not really convinced this is the best algorithm to perform such a numerical task. As typical in a Monte Carlo approach, the convergence to the target distribution is dictated by $\sqrt{M}$, which is quite slow. A matrix $M \times M$ where $M = 10^5$ has $10^{10}$ elements, occupying $40$ GB in the RAM, so this procedure becomes unfeasible quite soon. I should check and see if there are better algorithms.
+
+
+\textcolor{red}{I think I can prove this combining empirical diagonalization with Marcenko Pastur theory, at least for the isotropic case. By letting $M$ be finite, you can also analyze the width of each gradino! Finite scaling on $M$. Asymmetry in the gradino --> asymmetry in Marcenko Pastur}
+
 \section{Kernel error, ridgeless regime $\lambda = 0$}
 Let's compute the generalization error for a kernel ridge regression problem in the ridgless regime. From Paper1, we know that the kernel error is given once we compute the quantity $\nu$ defined through the self-consistency equation:
 \begin{equation}
@@ -397,16 +402,97 @@ The last quantity is extremely interesting. It represents the projection of the 
 \subsection{Finite size scaling}
 TODO!
 \begin{itemize}
+	\item Finite scaling of MArcenko pastur with $M$ finite and proving eigenvalue distribution
 	\item First plot of variance empirical and curve for a real KRR problem. Detect the seemingly mismatch
 	\item Introduction to the finite size world. Argue why it's should decay as $1/d$
 	\item Plot of distance normalized to show the scaling
 	\item Set a kernel whose neighboring coefficients are zero and observe a different scaling
 \end{itemize}
 \subsection{Ridge case}
-	\begin{itemize}
-		\item Add the ridge parameter $\lambda$ and verify this is equivalent to $l(\kappa)$
-		\item Reinterpret everything in terms of $\lambda_{eff}$, higher terms act as a regularizer
-	\end{itemize}
+Let us turn our attention again on the self-consistency equation \ref{eq:paper1Kernel}:
+$$
+n - \frac{\lambda}{\nu} = Tr(\Sigma (\Sigma + \nu \mathbb{I})^{-1})
+$$
+and set $\lambda \neq 0$. Then, we can solve this self-consistency equation in a straightforward manner once you have the solution for the ridgeless case. Indeed, assuming the usual scaling $n \sim \alpha d^{\kappa}$ and the ansatz $\nu = \xi d^{-\kappa}$:
+\begin{equation}
+	\alpha d^{\kappa} - d^{\kappa}\frac{\lambda}{\xi} = Tr(\Sigma (\Sigma + \nu \mathbb{I})^{-1})
+\end{equation}
+\begin{equation*}
+	\alpha -\frac{\lambda}{\xi} = d^{-\kappa}Tr(\Sigma (\Sigma + \nu \mathbb{I})^{-1})
+\end{equation*}
+
+The evaluation of the trace term can be carried out as was done in Sec.boh under the thermodynamic limit $d \to \infty$. Finally, one gets:
+\begin{equation}
+	\alpha - \frac{\lambda}{\xi} = \frac{1}{\kappa !} \frac{\delta_k}{\delta_k + \xi} + \frac{l(\kappa)}{\xi}
+\end{equation}
+\begin{equation}
+	\alpha = \frac{1}{\kappa !} \frac{\delta_k}{\delta_k + \xi} + \frac{l(\kappa)+\lambda}{\xi}
+	\label{eq:regularizer}
+\end{equation}
+Equation \ref{eq:regularizer} is very interesting because it reveals a fundamental properties of kernel machines. If we label:
+\begin{equation}
+	\lambda_{eff} = \lambda + l(\kappa)
+\end{equation}
+Then we find that the quantity $l(\kappa)$ behaves as an implicit regularizer! This is a rather fundamental truth: the high-degree terms in the kernel (specifically the tail defined by degrees $m > \kappa$) merely contribute to increasing the regularization parameter of the problem! In particular, we can formally establish an equivalence between two KRR models:
+\begin{itemize}
+	\item Model 1: a kernel of maximum degree $B$ trained on $n \sim d^\kappa$ data points, with $B > \kappa$ and no explicit regularization ($\lambda = 0$). For example:
+	$$
+	K(\vec x, \vec y) = 1 + 2\langle \vec x, \vec y \rangle + 3\langle \vec x, \vec y \rangle^2 + \langle \vec x, \vec y \rangle^3 + 4\langle \vec x, \vec y \rangle^4
+	$$
+	when $n \sim d^1$. This essentially means that the kernel will only be able to learn the linear features of whatever target function we give as input (although it potentially could have learned up to $B$-order features).
+	\item Model 2: a kernel of degree $B' = \kappa$ with the same Taylor coefficients:
+	$$
+	\tilde K(\vec x, \vec y) = 1 + 2\langle \vec x, \vec y \rangle 
+	$$ 
+	using, however, an explicit regularization $\lambda = l(\kappa) = \sum_{m=\kappa+1}^{B}\frac{\delta_\kappa}{m!}$.
+	In fact, our kernel $\tilde K$ will only be able to learn (even in the infinite data limit) linear features (exactly matching the problem's scaling $n\sim d^1$). Therefore, it behaves to a good approximation like a linear fit with a strong regularization induced by the tail terms of the original kernel $K$! This is what we call \textit{implicit regularization}
+\end{itemize}
+Put in other words, a kernel of max degree $B$ when the training data scales as $n \sim d^\kappa$ behaves as a $\kappa$-degree polynomial fitter (as long as $B > \kappa$) with implicit regularization given by the higher order contributions of the kernel $\kappa < m \leq B$. 
+\begin{figure}[htbp]
+	\centering
+	\begin{tikzpicture}[
+		% Stile generale dei blocchi: dimensioni ridotte
+		box/.style={
+			draw=black!70, very thick, rounded corners=3mm,
+			fill=blue!2, align=center, text width=5.5cm, % Ridotto da 7.5cm
+			inner sep=4mm, minimum height=4.5cm          % Ridotti padding e altezza
+		}
+		]
+		
+		% --- MODELLO 1 ---
+		\node[box] (M1) {
+			{\large \textbf{Model 1: Full Kernel}}\\[3mm]
+			$K(\vec x, \vec y) = \sum_{m=0}^\kappa c_m \langle \vec x, \vec y \rangle^m$\\[1.5mm]
+			$\color{red!80!black} + \underbrace{\sum_{m=\kappa+1}^B c_m \langle \vec x, \vec y \rangle^m}_{\text{High-degree tail}}$\\[4mm]
+			Explicit Reg.:\\[1mm]
+			$\lambda = 0$
+		};
+		
+		% --- MODELLO 2 ---
+		\node[box, right=3.5cm of M1] (M2) { % Distanza ridotta da 3.5cm a 2cm
+			{\large \textbf{Model 2: Effective Kernel}}\\[3mm]
+			$\tilde K(\vec x, \vec y) = \sum_{m=0}^\kappa c_m \langle \vec x, \vec y \rangle^m$\\[1.5mm]
+			\textit{\small(Truncated at degree $\kappa$)}\\[5mm]
+			Effective Reg.:\\[1mm]
+			$\color{red!80!black} \lambda_{\text{eff}} = \sum_{m=\kappa+1}^B \frac{c_m}{m!} \equiv l(\kappa)$
+		};
+		
+		% --- FRECCIA DI EQUIVALENZA (Centrale) ---
+		\draw[{Stealth[scale=1]}-{Stealth[scale=1]}, thick, draw=black!80]
+		(M1.east) -- (M2.west)
+		node[midway, above=1mm, align=center, font=\footnotesize\itshape] {Thermodynamic limit \\ $d \to \infty$, for $n \sim d^\kappa$};
+		
+		% --- FRECCIA DI MAPPING ---
+		\draw[-{Stealth[scale=1]}, dashed, thick, color=red!80!black]
+		([yshift=1mm, xshift=-8mm]M1.east)
+		to[out=-25, in=155]
+		([yshift=-12mm, xshift=8mm]M2.west);
+		
+	\end{tikzpicture}
+	\caption{Formal equivalence between the full kernel and the effective truncated kernel}
+	\label{fig:kernel_equivalence}
+\end{figure}
+\section{TODO}
 \textcolor{red}{TODO: \\ Asymptotic behavior of $\xi, \tau$ as $\alpha \to \infty$. (both goes to $0$). \\ Give a random initialization to the weight $\theta_\beta$ and see what we get as a back-of-the-envelope computations. \\ Fix the ansatz when $\kappa_0 < \kappa$ \\ And then of course onto the power-law case}
 
 
